@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import List
 
 from langchain_core.prompts import ChatPromptTemplate
+import os
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import AzureChatOpenAI
 
 from app.llm.schemas import ExecutionResult
 
@@ -26,11 +28,21 @@ Provide a final answer suitable for display in a chat UI.
 """
 
 
-def create_responder(google_api_key: str) -> ChatGoogleGenerativeAI:
+def create_responder(google_api_key: str, provider: str | None = None, azure_cfg: dict | None = None):
+    provider_normalized = (provider or "gemini").lower()
+    if provider_normalized == "azure":
+        azure = azure_cfg or {}
+        return AzureChatOpenAI(
+            azure_endpoint=azure.get("endpoint") or os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            api_key=azure.get("api_key") or os.getenv("AZURE_OPENAI_API_KEY", ""),
+            api_version=azure.get("api_version") or os.getenv("AZURE_OPENAI_API_VERSION", "2024-06-01"),
+            deployment_name=azure.get("deployment") or os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT", ""),
+            temperature=0.3,
+        )
     return ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=google_api_key, temperature=0.3)
 
 
-async def craft_response(llm: ChatGoogleGenerativeAI, user_query: str, results: List[ExecutionResult]) -> str:
+async def craft_response(llm, user_query: str, results: List[ExecutionResult]) -> str:
     def summarize() -> str:
         parts = []
         for r in results:

@@ -14,8 +14,26 @@ from app.tools.hcm_tool import OracleHCMCallTool
 
 def build_graph() -> Any:
     cfg = load_config()
-    planner_llm = create_planner(cfg.google_api_key)
-    responder_llm = create_responder(cfg.google_api_key)
+    planner_llm = create_planner(
+        cfg.google_api_key,
+        provider=cfg.llm_provider,
+        azure_cfg={
+            "endpoint": cfg.azure_endpoint,
+            "api_key": cfg.azure_api_key,
+            "api_version": cfg.azure_api_version,
+            "deployment": cfg.azure_chat_deployment,
+        },
+    )
+    responder_llm = create_responder(
+        cfg.google_api_key,
+        provider=cfg.llm_provider,
+        azure_cfg={
+            "endpoint": cfg.azure_endpoint,
+            "api_key": cfg.azure_api_key,
+            "api_version": cfg.azure_api_version,
+            "deployment": cfg.azure_chat_deployment,
+        },
+    )
     hcm_client = OracleHCMClient(cfg.hcm)
     hcm_tool = OracleHCMCallTool(hcm_client)
 

@@ -4,7 +4,9 @@ from typing import Any, Dict, Optional, Tuple
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+import os
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import AzureChatOpenAI
 
 from app.llm.schemas import (
     Plan,
@@ -47,11 +49,21 @@ If user_context contains an allowed param key (e.g., PersonNumber, PersonId), yo
 """
 
 
-def create_planner(google_api_key: str) -> ChatGoogleGenerativeAI:
+def create_planner(google_api_key: str, provider: str | None = None, azure_cfg: dict | None = None):
+    provider_normalized = (provider or "gemini").lower()
+    if provider_normalized == "azure":
+        azure = azure_cfg or {}
+        return AzureChatOpenAI(
+            azure_endpoint=azure.get("endpoint") or os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            api_key=azure.get("api_key") or os.getenv("AZURE_OPENAI_API_KEY", ""),
+            api_version=azure.get("api_version") or os.getenv("AZURE_OPENAI_API_VERSION", "2024-06-01"),
+            deployment_name=azure.get("deployment") or os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT", ""),
+            temperature=0.2,
+        )
     return ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=google_api_key, temperature=0.2)
 
 
-async def plan_calls(llm: ChatGoogleGenerativeAI, user_query: str, user_context: Optional[Dict[str, Any]] = None) -> Plan:
+async def plan_calls(llm, user_query: str, user_context: Optional[Dict[str, Any]] = None) -> Plan:
     parser = PydanticOutputParser(pydantic_object=Plan)
     prompt = ChatPromptTemplate.from_messages([
         ("system", PLANNER_SYSTEM),
